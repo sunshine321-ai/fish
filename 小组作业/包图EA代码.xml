@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XMI xmi.version="2.1" xmlns:uml="http://schema.omg.org/spec/UML/2.1" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1">
+  <XMI.header>
+    <XMI.documentation>
+      <XMI.exporter>MiroFish系统包图</XMI.exporter>
+      <XMI.exporterVersion>1.0</XMI.exporterVersion>
+    </XMI.documentation>
+  </XMI.header>
+  <XMI.content>
+    <uml:Model xmi.id="MiroFish_Model" name="MiroFish系统">
+      <packagedElement xmi.id="Package1" xmi.type="uml:Package" name="用户界面层">
+        <packagedElement xmi.id="Class1" xmi.type="uml:Class" name="项目界面"/>
+        <packagedElement xmi.id="Class2" xmi.type="uml:Class" name="本体界面"/>
+        <packagedElement xmi.id="Class3" xmi.type="uml:Class" name="图谱界面"/>
+        <packagedElement xmi.id="Class4" xmi.type="uml:Class" name="Agent界面"/>
+        <packagedElement xmi.id="Class5" xmi.type="uml:Class" name="报告界面"/>
+      </packagedElement>
+      <packagedElement xmi.id="Package2" xmi.type="uml:Package" name="业务逻辑层">
+        <packagedElement xmi.id="Class6" xmi.type="uml:Class" name="项目控制器"/>
+        <packagedElement xmi.id="Class7" xmi.type="uml:Class" name="本体控制器"/>
+        <packagedElement xmi.id="Class8" xmi.type="uml:Class" name="图谱控制器"/>
+        <packagedElement xmi.id="Class9" xmi.type="uml:Class" name="Agent控制器"/>
+        <packagedElement xmi.id="Class10" xmi.type="uml:Class" name="报告控制器"/>
+      </packagedElement>
+      <packagedElement xmi.id="Package3" xmi.type="uml:Package" name="数据访问层">
+        <packagedElement xmi.id="Class11" xmi.type="uml:Class" name="项目存储"/>
+        <packagedElement xmi.id="Class12" xmi.type="uml:Class" name="报告存储"/>
+        <packagedElement xmi.id="Class13" xmi.type="uml:Class" name="仿真存储"/>
+      </packagedElement>
+      <packagedElement xmi.id="Package4" xmi.type="uml:Package" name="外部服务">
+        <packagedElement xmi.id="Class14" xmi.type="uml:Class" name="LLM服务"/>
+        <packagedElement xmi.id="Class15" xmi.type="uml:Class" name="Zep图谱"/>
+      </packagedElement>
+      <packagedElement xmi.id="Dependency1" xmi.type="uml:Dependency" name="请求/应答">
+        <client xmi.idref="Package1"/>
+        <supplier xmi.idref="Package2"/>
+      </packagedElement>
+      <packagedElement xmi.id="Dependency2" xmi.type="uml:Dependency" name="调用">
+        <client xmi.idref="Package2"/>
+        <supplier xmi.idref="Package3"/>
+      </packagedElement>
+      <packagedElement xmi.id="Dependency3" xmi.type="uml:Dependency" name="调用">
+        <client xmi.idref="Package2"/>
+        <supplier xmi.idref="Package4"/>
+      </packagedElement>
+    </uml:Model>
+  </XMI.content>
+</XMI>

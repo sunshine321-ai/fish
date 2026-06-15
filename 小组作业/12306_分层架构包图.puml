@@ -1,0 +1,150 @@
+@startuml 12306_分层架构包图
+top to bottom direction
+
+' =======================================================
+' 12306 铁路客户服务中心 · 分层架构包图
+' 渲染: plantuml.com / VS Code PlantUML 插件
+' =======================================================
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam defaultFontSize 13
+skinparam ArrowFontSize 11
+
+skinparam package {
+  BackgroundColor #F8F8F8
+  BorderColor #888888
+  FontStyle bold
+  FontColor #333333
+}
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CCCCCC
+}
+
+' ============ 外部系统/参与者 ============
+actor "用户" as User
+rectangle "第三方支付" as Payment
+rectangle "短信网关" as SMSGateway
+rectangle "12306官网" as WebSite
+
+' ============ 架构分层 ============
+package "表示层 (Presentation Layer)" {
+  package "移动端" {
+    rectangle "购票模块" as MobileTicket
+    rectangle "订单管理" as MobileOrder
+    rectangle "个人中心" as MobileProfile
+    rectangle "余票查询" as MobileQuery
+  }
+  
+  package "PC端" {
+    rectangle "车票预订" as PCTicket
+    rectangle "订单查询" as PCOrder
+    rectangle "会员服务" as PCMember
+    rectangle "信息发布" as PCInfo
+  }
+  
+  package "API网关" {
+    rectangle "REST API" as RESTAPI
+    rectangle "消息推送" as PushService
+    rectangle "安全认证" as SecurityAuth
+  }
+}
+
+package "业务逻辑层 (Business Logic Layer)" {
+  package "核心业务" {
+    rectangle "车票交易" as TicketTrade
+    rectangle "座位分配" as SeatAlloc
+    rectangle "价格计算" as PriceCalc
+    rectangle "订单处理" as OrderProcess
+  }
+  
+  package "用户服务" {
+    rectangle "用户管理" as UserMgmt
+    rectangle "会员积分" as MemberPoints
+    rectangle "身份认证" as IdentityAuth
+    rectangle "消息通知" as MsgNotify
+  }
+  
+  package "数据服务" {
+    rectangle "车次管理" as TrainMgmt
+    rectangle "站点管理" as StationMgmt
+    rectangle "时刻表管理" as ScheduleMgmt
+    rectangle "库存管理" as InventoryMgmt
+  }
+}
+
+package "数据访问层 (Data Access Layer)" {
+  package "数据持久化" {
+    rectangle "MySQL访问" as MySQLDAO
+    rectangle "Redis缓存" as RedisDAO
+    rectangle "MongoDB文档" as MongoDBDAO
+    rectangle "时序数据库" as TimeSeriesDAO
+  }
+  
+  package "数据处理" {
+    rectangle "数据同步" as DataSync
+    rectangle "数据校验" as DataValid
+    rectangle "事务管理" as Transaction
+    rectangle "查询优化" as QueryOpt
+  }
+}
+
+package "基础设施层 (Infrastructure Layer)" {
+  rectangle "负载均衡" as LoadBalancer
+  rectangle "分布式缓存" as DistCache
+  rectangle "消息队列" as MessageQueue
+  rectangle "分布式锁" as DistLock
+  rectangle "日志监控" as LogMonitor
+  rectangle "配置中心" as ConfigCenter
+}
+
+' ============ 层间依赖关系 ============
+' 表示层 -> 业务逻辑层
+MobileTicket --> TicketTrade
+MobileOrder --> OrderProcess
+MobileProfile --> UserMgmt
+MobileQuery --> InventoryMgmt
+
+PCTicket --> TicketTrade
+PCOrder --> OrderProcess
+PCMember --> MemberPoints
+PCInfo --> ScheduleMgmt
+
+RESTAPI --> TicketTrade
+RESTAPI --> UserMgmt
+RESTAPI --> TrainMgmt
+
+' 业务逻辑层 -> 数据访问层
+TicketTrade --> MySQLDAO
+SeatAlloc --> RedisDAO
+PriceCalc --> MySQLDAO
+OrderProcess --> Transaction
+
+UserMgmt --> MySQLDAO
+MemberPoints --> RedisDAO
+IdentityAuth --> MySQLDAO
+MsgNotify --> MessageQueue
+
+TrainMgmt --> MySQLDAO
+StationMgmt --> MySQLDAO
+ScheduleMgmt --> TimeSeriesDAO
+InventoryMgmt --> RedisDAO
+
+' 数据访问层 -> 基础设施层
+MySQLDAO --> LoadBalancer
+RedisDAO --> DistCache
+DataSync --> MessageQueue
+Transaction --> DistLock
+
+' 外部系统交互
+User --> MobileTicket
+User --> PCTicket
+
+Payment <-- OrderProcess
+SMSGateway <-- MsgNotify
+WebSite <-- RESTAPI
+
+@enduml

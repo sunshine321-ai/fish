@@ -1,0 +1,69 @@
+@startuml MiroFish_包图_完整版
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam packageStyle rectangle
+
+package "外部服务" {
+  [LLM 服务]
+  [Zep 图谱]
+}
+
+package "用户界面层" as UI {
+  [项目界面]
+  [本体界面]
+  [图谱界面]
+  [Agent界面]
+  [报告界面]
+  
+  ' UI层内部关联：界面跳转
+  项目界面 --> 本体界面 : 跳转
+  本体界面 --> 图谱界面 : 跳转
+  图谱界面 --> Agent界面 : 跳转
+  Agent界面 --> 报告界面 : 跳转
+}
+
+package "业务逻辑层" as Logic {
+  [项目控制器]
+  [本体控制器]
+  [图谱控制器]
+  [Agent控制器]
+  [报告控制器]
+  
+  ' 逻辑层内部关联：控制器协作
+  报告控制器 ..> Agent控制器 : <<调用>>\n[二次采访]
+}
+
+package "数据服务层" as Data {
+  [项目存储]
+  [图谱存储]
+  [仿真存储]
+  [报告存储]
+  
+  ' 数据层内部关联：数据依赖
+  报告存储 ..> 仿真存储 : <<读取>>\n[动作流水]
+}
+
+' 层间依赖
+UI --> Logic : 请求/应答
+Logic --> Data : 请求/应答
+
+' 外部服务调用
+本体控制器 ..> [LLM 服务] : <<调用>>
+图谱控制器 ..> [Zep 图谱] : <<调用>>
+Agent控制器 ..> [LLM 服务] : <<调用>>
+报告控制器 ..> [LLM 服务] : <<调用>>
+
+note left of UI
+  层内关联：界面跳转流程
+end note
+
+note left of Logic
+  层内关联：报告控制器调用Agent控制器
+end note
+
+note left of Data
+  层内关联：报告存储读取仿真存储数据
+end note
+
+@enduml
