@@ -181,7 +181,12 @@ export const interviewAgents = (data) => {
  * 用于首页历史项目展示
  * @param {number} limit - 返回数量限制
  */
-export const getSimulationHistory = (limit = 20) => {
-  return service.get('/api/simulation/history', { params: { limit } })
+export const getSimulationHistory = (limit = 20, keyword = '') => {
+  const params = { limit }
+  const trimmedKeyword = keyword.trim()
+  if (trimmedKeyword) {
+    params.keyword = trimmedKeyword
+  }
+  return service.get('/api/simulation/history', { params })
 }
 

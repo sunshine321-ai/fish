@@ -17,10 +17,32 @@
       <div class="section-line"></div>
     </div>
 
+    <div class="history-search">
+      <input
+        v-model="searchKeyword"
+        class="history-search-input"
+        type="search"
+        placeholder="搜索推演编号、问题、文件名或日期"
+        aria-label="搜索推演记录"
+        :disabled="loading && projects.length === 0"
+      />
+      <button
+        v-if="searchKeyword"
+        class="history-search-clear"
+        type="button"
+        @click="searchKeyword = ''"
+      >
+        清除
+      </button>
+      <span class="history-search-count">
+        {{ loading && projects.length === 0 ? '...' : `${filteredProjects.length}/${projects.length}` }}
+      </span>
+    </div>
+
     <!-- 卡片容器（只在有项目时显示） -->
-    <div v-if="projects.length > 0" class="cards-container" :class="{ expanded: isExpanded }" :style="containerStyle">
-      <div 
-        v-for="(project, index) in projects" 
+    <div v-if="filteredProjects.length > 0" class="cards-container" :class="{ expanded: isExpanded }" :style="containerStyle">
+      <div
+        v-for="(project, index) in filteredProjects"
         :key="project.simulation_id"
         class="project-card"
         :class="{ expanded: isExpanded, hovering: hoveringCard === index }"
@@ -97,6 +119,16 @@
         <!-- 底部装饰线 (hover时展开) -->
         <div class="card-bottom-line"></div>
       </div>
+    </div>
+
+    <div v-if="!loading && projects.length > 0 && filteredProjects.length === 0" class="empty-state">
+      <span class="empty-icon">?</span>
+      <span>没有找到匹配的推演记录</span>
+    </div>
+
+    <div v-if="!loading && projects.length === 0" class="empty-state">
+      <span class="empty-icon">?</span>
+      <span>暂无推演记录，请确认后端服务已启动</span>
     </div>
 
     <!-- 加载状态 -->
@@ -205,9 +237,11 @@ const isExpanded = ref(false)
 const hoveringCard = ref(null)
 const historyContainer = ref(null)
 const selectedProject = ref(null)  // 当前选中的项目（用于弹窗）
+const searchKeyword = ref('')
 let observer = null
 let isAnimating = false  // 动画锁，防止闪烁
 let expandDebounceTimer = null  // 防抖定时器
+let searchDebounceTimer = null
 let pendingState = null  // 记录待执行的目标状态
 
 // 卡片布局配置 - 调整为更宽的比例
@@ -215,6 +249,45 @@ const CARDS_PER_ROW = 4
 const CARD_WIDTH = 280  
 const CARD_HEIGHT = 280 
 const CARD_GAP = 24
+
+const normalizeSearchText = (value) => String(value ?? '').toLowerCase()
+
+const filteredProjects = computed(() => {
+  const keyword = normalizeSearchText(searchKeyword.value.trim())
+  if (!keyword) return projects.value
+
+  return projects.value.filter((project) => {
+    const filesText = (project.files || [])
+      .map((file) => file.filename || '')
+      .join(' ')
+    const progressClass = getProgressClass(project)
+    const progressLabelMap = {
+      completed: 'completed 已完成 完成',
+      'in-progress': 'in-progress running 进行中 运行中',
+      'not-started': 'not-started idle 未开始'
+    }
+
+    const searchText = [
+      project.simulation_id,
+      formatSimulationId(project.simulation_id),
+      project.project_id,
+      project.project_name,
+      project.report_id,
+      project.simulation_requirement,
+      project.created_at,
+      project.created_date,
+      formatDate(project.created_at),
+      formatTime(project.created_at),
+      project.runner_status,
+      formatRounds(project),
+      progressClass,
+      progressLabelMap[progressClass],
+      filesText
+    ].filter(Boolean).join(' ')
+
+    return normalizeSearchText(searchText).includes(keyword)
+  })
+})
 
 // 动态计算容器高度样式
 const containerStyle = computed(() => {
@@ -224,7 +297,7 @@ const containerStyle = computed(() => {
   }
   
   // 展开态：根据卡片数量动态计算高度
-  const total = projects.value.length
+  const total = filteredProjects.value.length
   if (total === 0) {
     return { minHeight: '280px' }
   }
@@ -238,7 +311,7 @@ const containerStyle = computed(() => {
 
 // 获取卡片样式
 const getCardStyle = (index) => {
-  const total = projects.value.length
+  const total = filteredProjects.value.length
   
   if (isExpanded.value) {
     // 展开态：网格布局
@@ -435,10 +508,10 @@ const goToReport = () => {
 }
 
 // 加载历史项目
-const loadHistory = async () => {
+const loadHistory = async (keyword = searchKeyword.value) => {
   try {
     loading.value = true
-    const response = await getSimulationHistory(20)
+    const response = await getSimulationHistory(20, keyword)
     if (response.success) {
       projects.value = response.data || []
     }
@@ -538,6 +611,30 @@ watch(() => route.path, (newPath) => {
   }
 })
 
+watch(searchKeyword, (keyword) => {
+  hoveringCard.value = null
+
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
+
+  if (keyword.trim()) {
+    pendingState = null
+    if (expandDebounceTimer) {
+      clearTimeout(expandDebounceTimer)
+      expandDebounceTimer = null
+    }
+    isAnimating = false
+    isExpanded.value = true
+  }
+
+  searchDebounceTimer = setTimeout(() => {
+    loadHistory(keyword)
+    searchDebounceTimer = null
+  }, 300)
+})
+
 onMounted(async () => {
   // 确保 DOM 渲染完成后再加载数据
   await nextTick()
@@ -564,6 +661,10 @@ onUnmounted(() => {
   if (expandDebounceTimer) {
     clearTimeout(expandDebounceTimer)
     expandDebounceTimer = null
+  }
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
   }
 })
 </script>
@@ -649,6 +750,65 @@ onUnmounted(() => {
   color: #9CA3AF;
   letter-spacing: 3px;
   text-transform: uppercase;
+}
+
+.history-search {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: -4px 0 24px;
+  padding: 0 40px;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+.history-search-input {
+  width: 360px;
+  max-width: min(72vw, 360px);
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #374151;
+  font-family: inherit;
+  font-size: 0.75rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.history-search-input:focus {
+  border-color: #111827;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.history-search-clear {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: #6B7280;
+  font-family: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.history-search-clear:hover {
+  border-color: #111827;
+  color: #111827;
+  background: #F9FAFB;
+}
+
+.history-search-count {
+  min-width: 46px;
+  color: #9CA3AF;
+  font-size: 0.7rem;
+  letter-spacing: 0.4px;
 }
 
 /* 卡片容器 */

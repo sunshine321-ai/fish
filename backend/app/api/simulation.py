@@ -903,11 +903,68 @@ def get_simulation_history():
             "count": 7
         }
     """
+    def format_simulation_id_for_search(simulation_id: str) -> str:
+        if not simulation_id:
+            return "SIM_UNKNOWN"
+        prefix = simulation_id.replace("sim_", "")[:6]
+        return f"SIM_{prefix.upper()}"
+
+    def frontend_display_date_for_search(date_str: str) -> str:
+        if not date_str:
+            return ""
+        try:
+            from datetime import datetime, timedelta
+
+            normalized = date_str.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(normalized)
+            if dt.tzinfo is not None:
+                dt = dt.astimezone().replace(tzinfo=None)
+            return (dt - timedelta(hours=8)).date().isoformat()
+        except Exception:
+            return date_str[:10] if len(date_str) >= 10 else date_str
+
+    def history_search_text(simulation: dict) -> str:
+        files_text = " ".join(
+            file.get("filename", "")
+            for file in simulation.get("files", [])
+            if isinstance(file, dict)
+        )
+
+        current = simulation.get("current_round") or 0
+        total = simulation.get("total_rounds") or 0
+        if total == 0 or current == 0:
+            progress_text = "not-started idle"
+        elif current >= total:
+            progress_text = "completed"
+        else:
+            progress_text = "in-progress running"
+
+        created_at = simulation.get("created_at", "")
+        search_values = [
+            simulation.get("simulation_id"),
+            format_simulation_id_for_search(simulation.get("simulation_id", "")),
+            simulation.get("project_id"),
+            simulation.get("project_name"),
+            simulation.get("report_id"),
+            simulation.get("simulation_requirement"),
+            created_at,
+            simulation.get("created_date"),
+            frontend_display_date_for_search(created_at),
+            simulation.get("runner_status"),
+            f"{current}/{total}" if total else "",
+            progress_text,
+            files_text,
+        ]
+        return " ".join(str(value) for value in search_values if value).lower()
+
     try:
         limit = request.args.get('limit', 20, type=int)
+        keyword = request.args.get('keyword', '', type=str).strip().lower()
         
         manager = SimulationManager()
-        simulations = manager.list_simulations()[:limit]
+        simulations = manager.list_simulations()
+        if not keyword:
+            simulations = simulations[:limit]
         
         # 增强模拟数据，只从 Simulation 文件读取
         enriched_simulations = []
@@ -944,6 +1001,7 @@ def get_simulation_history():
             
             # 获取关联项目的文件列表（最多3个）
             project = ProjectManager.get_project(sim.project_id)
+            sim_dict["project_name"] = project.name if project else ""
             if project and hasattr(project, 'files') and project.files:
                 sim_dict["files"] = [
                     {"filename": f.get("filename", "未知文件")} 
@@ -966,6 +1024,12 @@ def get_simulation_history():
                 sim_dict["created_date"] = ""
             
             enriched_simulations.append(sim_dict)
+
+        if keyword:
+            enriched_simulations = [
+                sim for sim in enriched_simulations
+                if keyword in history_search_text(sim)
+            ][:limit]
         
         return jsonify({
             "success": True,

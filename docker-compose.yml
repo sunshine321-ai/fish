@@ -1,8 +1,8 @@
 services:
   mirofish:
-   # image: ghcr.io/666ghj/mirofish:latest
-    # 加速镜像（如拉取缓慢可替换上方地址）
     image: ghcr.nju.edu.cn/666ghj/mirofish:latest
+    # Original image:
+    # image: ghcr.io/666ghj/mirofish:latest
     container_name: mirofish
     env_file:
       - .env
@@ -12,3 +12,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend/uploads:/app/backend/uploads
+      # Local maintenance patches without rebuilding the remote image.
+      - ./backend/app/api/simulation.py:/app/backend/app/api/simulation.py:ro
+      - ./frontend/src/api/simulation.js:/app/frontend/src/api/simulation.js:ro
+      - ./frontend/src/components/HistoryDatabase.vue:/app/frontend/src/components/HistoryDatabase.vue:ro
